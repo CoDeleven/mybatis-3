@@ -73,16 +73,26 @@ public class XNode {
     return builder.toString();
   }
 
+  /**
+   * 获取某个节点的唯一ID
+   * 这个ID包含当前节点的ID到祖先节点的ID
+   * @return
+   */
   public String getValueBasedIdentifier() {
     StringBuilder builder = new StringBuilder();
     XNode current = this;
     while (current != null) {
+      // 第一次肯定是this，所以不加_；后面遍历父节点的时候会加下划线进行分割
       if (current != this) {
         builder.insert(0, "_");
       }
+      // 获取当前节点的id or value or property
+      // 如果都没有取null
       String value = current.getStringAttribute("id",
           current.getStringAttribute("value",
               current.getStringAttribute("property", null)));
+      // 假设现在有一个节点<job id="com.codeleven.xnode">，那么此时的变量value="com.codeleven.xnode"
+      // 那么下面的代码片段会生成[com_codeleven_xnode]的字符串
       if (value != null) {
         value = value.replace('.', '_');
         builder.insert(0, "]");
@@ -90,7 +100,10 @@ public class XNode {
             value);
         builder.insert(0, "[");
       }
+      // 将当前标签的名字插在value前面，仍然拿前面的例子说
+      // 当前标签的名字是job，所以此时的builder是job[com_codeleven_xnode]
       builder.insert(0, current.getName());
+      // 然后获取父节点，一直遍历下去
       current = current.getParent();
     }
     return builder.toString();

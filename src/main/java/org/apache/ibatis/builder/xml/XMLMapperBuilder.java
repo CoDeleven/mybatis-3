@@ -88,7 +88,9 @@ public class XMLMapperBuilder extends BaseBuilder {
   }
 
   public void parse() {
+    // 判断指定的资源resource是否加载过
     if (!configuration.isResourceLoaded(resource)) {
+      // 首先获取mapper节点，然后解析mapper节点
       configurationElement(parser.evalNode("/mapper"));
       configuration.addLoadedResource(resource);
       bindMapperForNamespace();
@@ -110,9 +112,13 @@ public class XMLMapperBuilder extends BaseBuilder {
         throw new BuilderException("Mapper's namespace cannot be empty");
       }
       builderAssistant.setCurrentNamespace(namespace);
+      // 解析<cache-ref> 标签
       cacheRefElement(context.evalNode("cache-ref"));
+      // 解析<cache> 标签
       cacheElement(context.evalNode("cache"));
+      // 该标签已经被废弃了，所以这里也不再分析
       parameterMapElement(context.evalNodes("/mapper/parameterMap"));
+      // 解析所有的<resultMap>标签
       resultMapElements(context.evalNodes("/mapper/resultMap"));
       sqlElement(context.evalNodes("/mapper/sql"));
       buildStatementFromContext(context.evalNodes("select|insert|update|delete"));
@@ -239,8 +245,10 @@ public class XMLMapperBuilder extends BaseBuilder {
   }
 
   private void resultMapElements(List<XNode> list) throws Exception {
+    // 遍历所有的<resultMap>标签
     for (XNode resultMapNode : list) {
       try {
+        // 针对每隔<resultMap>逐个击破
         resultMapElement(resultMapNode);
       } catch (IncompleteElementException e) {
         // ignore, it will be retried
@@ -254,26 +262,42 @@ public class XMLMapperBuilder extends BaseBuilder {
 
   private ResultMap resultMapElement(XNode resultMapNode, List<ResultMapping> additionalResultMappings) throws Exception {
     ErrorContext.instance().activity("processing " + resultMapNode.getValueBasedIdentifier());
+    // 获取<resultMap>标签的id属性，如果不存在就生成一个默认标签（是会重复的）
     String id = resultMapNode.getStringAttribute("id",
         resultMapNode.getValueBasedIdentifier());
+    /*
+     * <resultMap>的结果类型，按照以下顺序加载，只要找到该属性就停止加载
+     * 1.type 2.ofType 3. resultType 4.javaType
+     * 个人猜测这里仅仅是容错（标准来说应该是给type）
+     */
     String type = resultMapNode.getStringAttribute("type",
         resultMapNode.getStringAttribute("ofType",
             resultMapNode.getStringAttribute("resultType",
                 resultMapNode.getStringAttribute("javaType"))));
+    // 获取<resultMap>的extends属性，也就是继承关系
     String extend = resultMapNode.getStringAttribute("extends");
+    // 是否自动映射
     Boolean autoMapping = resultMapNode.getBooleanAttribute("autoMapping");
+    // 获取结果类型（包括别名的处理）
     Class<?> typeClass = resolveClass(type);
     Discriminator discriminator = null;
+    // 合并
     List<ResultMapping> resultMappings = new ArrayList<ResultMapping>();
     resultMappings.addAll(additionalResultMappings);
+    // 获取<resultMap>节点下的所有子节点
     List<XNode> resultChildren = resultMapNode.getChildren();
+    // 遍历每个子节点
     for (XNode resultChild : resultChildren) {
+      // 如果节点是<constructor>
       if ("constructor".equals(resultChild.getName())) {
         processConstructorElement(resultChild, typeClass, resultMappings);
+      // 如果节点是<discriminator>
       } else if ("discriminator".equals(resultChild.getName())) {
         discriminator = processDiscriminatorElement(resultChild, typeClass, resultMappings);
+      // 其他节点的分析处理
       } else {
         List<ResultFlag> flags = new ArrayList<ResultFlag>();
+        // ID节点的处理
         if ("id".equals(resultChild.getName())) {
           flags.add(ResultFlag.ID);
         }
@@ -336,7 +360,7 @@ public class XMLMapperBuilder extends BaseBuilder {
       }
     }
   }
-  
+
   private boolean databaseIdMatchesCurrent(String id, String databaseId, String requiredDatabaseId) {
     if (requiredDatabaseId != null) {
       if (!requiredDatabaseId.equals(databaseId)) {
@@ -382,7 +406,7 @@ public class XMLMapperBuilder extends BaseBuilder {
     JdbcType jdbcTypeEnum = resolveJdbcType(jdbcType);
     return builderAssistant.buildResultMapping(resultType, property, column, javaTypeClass, jdbcTypeEnum, nestedSelect, nestedResultMap, notNullColumn, columnPrefix, typeHandlerClass, flags, resultSet, foreignColumn, lazy);
   }
-  
+
   private String processNestedResultMappings(XNode context, List<ResultMapping> resultMappings) throws Exception {
     if ("association".equals(context.getName())
         || "collection".equals(context.getName())
