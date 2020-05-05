@@ -31,37 +31,37 @@ import org.apache.ibatis.transaction.Transaction;
  * @author Clinton Begin
  */
 public interface Executor {
-
+  // 空ResultHandler的枚举对象
   ResultHandler NO_RESULT_HANDLER = null;
-
+  // 增删改操作，由传入的MappedStatement决定
   int update(MappedStatement ms, Object parameter) throws SQLException;
-
+  // 查询
   <E> List<E> query(MappedStatement ms, Object parameter, RowBounds rowBounds, ResultHandler resultHandler, CacheKey cacheKey, BoundSql boundSql) throws SQLException;
-
+  // 查询
   <E> List<E> query(MappedStatement ms, Object parameter, RowBounds rowBounds, ResultHandler resultHandler) throws SQLException;
-
+  // 查询，返回值是个光标
   <E> Cursor<E> queryCursor(MappedStatement ms, Object parameter, RowBounds rowBounds) throws SQLException;
-
+  // 刷新批处理的语句到数据库中
   List<BatchResult> flushStatements() throws SQLException;
-
+  // 提交事务
   void commit(boolean required) throws SQLException;
-
+  // 回滚事务
   void rollback(boolean required) throws SQLException;
-
+  // 创建CacheKey
   CacheKey createCacheKey(MappedStatement ms, Object parameterObject, RowBounds rowBounds, BoundSql boundSql);
-
+  // 判断是否缓存
   boolean isCached(MappedStatement ms, CacheKey key);
-
+  // 清除本地缓存
   void clearLocalCache();
-
+  // 延迟加载
   void deferLoad(MappedStatement ms, MetaObject resultObject, String property, CacheKey key, Class<?> targetType);
-
+  // 获取事务
   Transaction getTransaction();
-
+  // 关闭事务
   void close(boolean forceRollback);
-
+  // 判断事务是否关闭
   boolean isClosed();
-
+  // 设置包装的Executor对象
   void setExecutorWrapper(Executor executor);
 
 }

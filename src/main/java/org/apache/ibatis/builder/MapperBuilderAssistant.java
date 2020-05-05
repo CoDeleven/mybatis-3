@@ -192,7 +192,7 @@ public class MapperBuilderAssistant extends BaseBuilder {
       ResultMap resultMap = configuration.getResultMap(extend);
       // 获取要继承的所有resultMapping
       List<ResultMapping> extendedResultMappings = new ArrayList<ResultMapping>(resultMap.getResultMappings());
-      // 移除相同的标签元素
+      // 移除相同的标签元素（主要为了覆盖）
       extendedResultMappings.removeAll(resultMappings);
       // 如果当前的resultMap包含<constructor>就移除要继承的resultMap的<constructor>
       boolean declaresConstructor = false;

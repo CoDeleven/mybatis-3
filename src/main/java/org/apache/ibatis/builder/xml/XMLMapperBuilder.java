@@ -107,10 +107,12 @@ public class XMLMapperBuilder extends BaseBuilder {
 
   private void configurationElement(XNode context) {
     try {
+      // 获取当前映射文件的命名空间，通常是某一个Mapper接口的全限定名称
       String namespace = context.getStringAttribute("namespace");
       if (namespace == null || namespace.equals("")) {
         throw new BuilderException("Mapper's namespace cannot be empty");
       }
+      // 设置当前的builderAssistant的命名空间
       builderAssistant.setCurrentNamespace(namespace);
       // 解析<cache-ref> 标签
       cacheRefElement(context.evalNode("cache-ref"));
@@ -120,7 +122,9 @@ public class XMLMapperBuilder extends BaseBuilder {
       parameterMapElement(context.evalNodes("/mapper/parameterMap"));
       // 解析所有的<resultMap>标签
       resultMapElements(context.evalNodes("/mapper/resultMap"));
+      // 解析所有的<sql>标签
       sqlElement(context.evalNodes("/mapper/sql"));
+      // 解析 <select />、<insert />、<update />、<delete />标签
       buildStatementFromContext(context.evalNodes("select|insert|update|delete"));
     } catch (Exception e) {
       throw new BuilderException("Error parsing Mapper XML. The XML location is '" + resource + "'. Cause: " + e, e);
@@ -357,6 +361,11 @@ public class XMLMapperBuilder extends BaseBuilder {
     return builderAssistant.buildDiscriminator(resultType, column, javaTypeClass, jdbcTypeEnum, typeHandlerClass, discriminatorMap);
   }
 
+  /**
+   * 解析<sql>标签列表
+   * @param list
+   * @throws Exception
+   */
   private void sqlElement(List<XNode> list) throws Exception {
     if (configuration.getDatabaseId() != null) {
       sqlElement(list, configuration.getDatabaseId());
@@ -364,29 +373,53 @@ public class XMLMapperBuilder extends BaseBuilder {
     sqlElement(list, null);
   }
 
+  /**
+   * 解析单个<sql>节点
+   * @param list
+   * @param requiredDatabaseId
+   * @throws Exception
+   */
   private void sqlElement(List<XNode> list, String requiredDatabaseId) throws Exception {
     for (XNode context : list) {
+      // 获取标签上的databaseId属性
       String databaseId = context.getStringAttribute("databaseId");
+      // 获取标签上的id属性
       String id = context.getStringAttribute("id");
+      // 获取完整的id属性（结合了namespace）
       id = builderAssistant.applyCurrentNamespace(id, false);
+      // 判断databaseId是否匹配，如果匹配再放入sqlFragments中
       if (databaseIdMatchesCurrent(id, databaseId, requiredDatabaseId)) {
         sqlFragments.put(id, context);
       }
     }
   }
 
+  /**
+   * 该标签归属的数据库ID是否和配置文件指定的数据库ID一致
+   * @param id String 该标签的ID
+   * @param databaseId String 标签上的数据库ID
+   * @param requiredDatabaseId String 配置文件要求使用的数据库ID
+   * @return
+   */
   private boolean databaseIdMatchesCurrent(String id, String databaseId, String requiredDatabaseId) {
+    // 要求的数据库ID不为空
     if (requiredDatabaseId != null) {
+      // 如果配置文件指定的数据库ID和该标签使用的数据库ID不同就返回false
       if (!requiredDatabaseId.equals(databaseId)) {
         return false;
       }
     } else {
+      // 如果配置文件的数据库ID为空，标签上的数据库ID不为空，也返回false
       if (databaseId != null) {
         return false;
       }
       // skip this fragment if there is a previous one with a not null databaseId
+      // 如果该标签的ID已经存在于sqlFragments中
       if (this.sqlFragments.containsKey(id)) {
+        // 获取这个标签的内容
         XNode context = this.sqlFragments.get(id);
+        // 如果这个标签的databaseId不为空，就返回false
+        // 这是因为配置文件中要求的数据库ID为空
         if (context.getStringAttribute("databaseId") != null) {
           return false;
         }
@@ -417,6 +450,7 @@ public class XMLMapperBuilder extends BaseBuilder {
     String jdbcType = context.getStringAttribute("jdbcType");
     String nestedSelect = context.getStringAttribute("select");
     String nestedResultMap = context.getStringAttribute("resultMap",
+        // 解析匿名嵌套映射
         processNestedResultMappings(context, Collections.<ResultMapping> emptyList()));
     String notNullColumn = context.getStringAttribute("notNullColumn");
     String columnPrefix = context.getStringAttribute("columnPrefix");
@@ -437,11 +471,15 @@ public class XMLMapperBuilder extends BaseBuilder {
   }
 
   private String processNestedResultMappings(XNode context, List<ResultMapping> resultMappings) throws Exception {
+    // 只会处理<association/> 、<collection/>和<case/>标签
+    // 如果指定了select属性，就不会生成嵌套的ResultMap
     if ("association".equals(context.getName())
         || "collection".equals(context.getName())
         || "case".equals(context.getName())) {
       if (context.getStringAttribute("select") == null) {
+        // 解析当前标签下的所有元素为ResultMapping
         ResultMap resultMap = resultMapElement(context, resultMappings);
+        // 因为是匿名嵌套ResultMap，所以ID是默认生成的
         return resultMap.getId();
       }
     }
