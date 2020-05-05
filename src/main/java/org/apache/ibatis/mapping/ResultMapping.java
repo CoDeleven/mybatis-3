@@ -26,24 +26,39 @@ import org.apache.ibatis.type.TypeHandler;
 import org.apache.ibatis.type.TypeHandlerRegistry;
 
 /**
+ * 保存<resultMap>标签下所有子标签（不包含discriminator标签）
  * @author Clinton Begin
  */
 public class ResultMapping {
-
+  // 全局All in one配置
   private Configuration configuration;
+  // 要映射的对象的属性名称
   private String property;
+  // 被映射的数据库中的表字段的名称
   private String column;
+  // 被映射的对象的属性类型
   private Class<?> javaType;
+  // 被映射的数据库中的表字段的类型
   private JdbcType jdbcType;
+  // javaType 和 jdbcType之间的类型转换器
   private TypeHandler<?> typeHandler;
+  // 该子元素嵌套的<resultMap>标签的ID
   private String nestedResultMapId;
+  // 该子元素嵌套的<select>标签的ID
   private String nestedQueryId;
+  // 非空的列
   private Set<String> notNullColumns;
+  // 列前缀
   private String columnPrefix;
+  // 这个子元素的FLAG，有CONSTRUCTOR 和 ID
   private List<ResultFlag> flags;
+  // 传给嵌套select的组合，示例去实践篇里看
   private List<ResultMapping> composites;
+  // ResultSet的名字
   private String resultSet;
+  // ResultSet中使用的
   private String foreignColumn;
+  // 是否延迟加载
   private boolean lazy;
 
   ResultMapping() {

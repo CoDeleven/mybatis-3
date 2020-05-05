@@ -288,14 +288,15 @@ public class XMLMapperBuilder extends BaseBuilder {
     List<XNode> resultChildren = resultMapNode.getChildren();
     // 遍历每个子节点
     for (XNode resultChild : resultChildren) {
-      // 如果节点是<constructor>
+      // 分析<constructor>标签节点
       if ("constructor".equals(resultChild.getName())) {
+        // 处理<constructor>节点
         processConstructorElement(resultChild, typeClass, resultMappings);
-      // 如果节点是<discriminator>
       } else if ("discriminator".equals(resultChild.getName())) {
+        // 处理<discriminator>节点
         discriminator = processDiscriminatorElement(resultChild, typeClass, resultMappings);
-      // 其他节点的分析处理
       } else {
+        // 其他节点的分析处理，比如<id>,<result>,<association>,<collection>等节点
         List<ResultFlag> flags = new ArrayList<ResultFlag>();
         // ID节点的处理
         if ("id".equals(resultChild.getName())) {
@@ -306,6 +307,7 @@ public class XMLMapperBuilder extends BaseBuilder {
     }
     ResultMapResolver resultMapResolver = new ResultMapResolver(builderAssistant, id, typeClass, extend, discriminator, resultMappings, autoMapping);
     try {
+      // 生成ResultMap
       return resultMapResolver.resolve();
     } catch (IncompleteElementException  e) {
       configuration.addIncompleteResultMap(resultMapResolver);
@@ -313,14 +315,26 @@ public class XMLMapperBuilder extends BaseBuilder {
     }
   }
 
+  /**
+   * 处理<constructor>标签
+   * @param resultChild
+   * @param resultType
+   * @param resultMappings
+   * @throws Exception
+   */
   private void processConstructorElement(XNode resultChild, Class<?> resultType, List<ResultMapping> resultMappings) throws Exception {
+    // 获取<constructor>标签下的所有子节点
     List<XNode> argChildren = resultChild.getChildren();
+    // 遍历这些子节点
     for (XNode argChild : argChildren) {
       List<ResultFlag> flags = new ArrayList<ResultFlag>();
+      // 首先都增加CONSTRUCTOR标识
       flags.add(ResultFlag.CONSTRUCTOR);
+      // 如果子节点是<idArg>标签，就再增加ID标志
       if ("idArg".equals(argChild.getName())) {
         flags.add(ResultFlag.ID);
       }
+      // 构建
       resultMappings.add(buildResultMappingFromContext(argChild, resultType, flags));
     }
   }
@@ -381,11 +395,21 @@ public class XMLMapperBuilder extends BaseBuilder {
     return true;
   }
 
+  /**
+   * 构建ResultMapping
+   * @param context XNode 节点对象
+   * @param resultType Class 结果类型
+   * @param flags List 用来标识特殊节点
+   * @return
+   * @throws Exception
+   */
   private ResultMapping buildResultMappingFromContext(XNode context, Class<?> resultType, List<ResultFlag> flags) throws Exception {
     String property;
+    // 如果是当前要处理的节点是<constructor>的子标签时
     if (flags.contains(ResultFlag.CONSTRUCTOR)) {
       property = context.getStringAttribute("name");
     } else {
+      // 其他的标签都取property
       property = context.getStringAttribute("property");
     }
     String column = context.getStringAttribute("column");
@@ -399,11 +423,16 @@ public class XMLMapperBuilder extends BaseBuilder {
     String typeHandler = context.getStringAttribute("typeHandler");
     String resultSet = context.getStringAttribute("resultSet");
     String foreignColumn = context.getStringAttribute("foreignColumn");
+    // 获取lazy属性
     boolean lazy = "lazy".equals(context.getStringAttribute("fetchType", configuration.isLazyLoadingEnabled() ? "lazy" : "eager"));
+    // 解析javaType类型
     Class<?> javaTypeClass = resolveClass(javaType);
+    // 解析typeHandler属性
     @SuppressWarnings("unchecked")
     Class<? extends TypeHandler<?>> typeHandlerClass = (Class<? extends TypeHandler<?>>) resolveClass(typeHandler);
+    // 解析jdbcType类型
     JdbcType jdbcTypeEnum = resolveJdbcType(jdbcType);
+    // 构建ResultMapping
     return builderAssistant.buildResultMapping(resultType, property, column, javaTypeClass, jdbcTypeEnum, nestedSelect, nestedResultMap, notNullColumn, columnPrefix, typeHandlerClass, flags, resultSet, foreignColumn, lazy);
   }
 

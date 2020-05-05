@@ -180,6 +180,7 @@ public class MapperBuilderAssistant extends BaseBuilder {
       Discriminator discriminator,
       List<ResultMapping> resultMappings,
       Boolean autoMapping) {
+    // id处理
     id = applyCurrentNamespace(id, false);
     extend = applyCurrentNamespace(extend, true);
 
@@ -187,10 +188,13 @@ public class MapperBuilderAssistant extends BaseBuilder {
       if (!configuration.hasResultMap(extend)) {
         throw new IncompleteElementException("Could not find a parent resultmap with id '" + extend + "'");
       }
+      // 获取extend的resultMap
       ResultMap resultMap = configuration.getResultMap(extend);
+      // 获取要继承的所有resultMapping
       List<ResultMapping> extendedResultMappings = new ArrayList<ResultMapping>(resultMap.getResultMappings());
+      // 移除相同的标签元素
       extendedResultMappings.removeAll(resultMappings);
-      // Remove parent constructor if this resultMap declares a constructor.
+      // 如果当前的resultMap包含<constructor>就移除要继承的resultMap的<constructor>
       boolean declaresConstructor = false;
       for (ResultMapping resultMapping : resultMappings) {
         if (resultMapping.getFlags().contains(ResultFlag.CONSTRUCTOR)) {
@@ -206,8 +210,10 @@ public class MapperBuilderAssistant extends BaseBuilder {
           }
         }
       }
+      // 将要继承的resultMapping都加到当前的resultMap中
       resultMappings.addAll(extendedResultMappings);
     }
+    // 构建resultMap
     ResultMap resultMap = new ResultMap.Builder(configuration, id, type, resultMappings, autoMapping)
         .discriminator(discriminator)
         .build();
@@ -358,6 +364,24 @@ public class MapperBuilderAssistant extends BaseBuilder {
     return resultMaps;
   }
 
+  /**
+   * 构建ResultMapping，是ResultMapping！！
+   * @param resultType
+   * @param property
+   * @param column
+   * @param javaType
+   * @param jdbcType
+   * @param nestedSelect
+   * @param nestedResultMap
+   * @param notNullColumn
+   * @param columnPrefix
+   * @param typeHandler
+   * @param flags
+   * @param resultSet
+   * @param foreignColumn
+   * @param lazy
+   * @return
+   */
   public ResultMapping buildResultMapping(
       Class<?> resultType,
       String property,
@@ -373,9 +397,14 @@ public class MapperBuilderAssistant extends BaseBuilder {
       String resultSet,
       String foreignColumn,
       boolean lazy) {
+    // 如果指定了javaType，那么直接返回javaType。否则就得MyBatis判断，判断逻辑如下：
+    // 获取resultType里的property属性的类型。resultType是resultMap最终要返回的类型，property是返回类型里的一个属性
     Class<?> javaTypeClass = resolveResultJavaType(resultType, property, javaType);
+    // 根据属性类型 和 typeHandler的关系获取 typeHandler实例
     TypeHandler<?> typeHandlerInstance = resolveTypeHandler(javaTypeClass, typeHandler);
+    // 处理嵌套select语句情况下的column属性
     List<ResultMapping> composites = parseCompositeColumnName(column);
+    // 构建ResultMapping，就是一堆设置啊，检查啊之类的
     return new ResultMapping.Builder(configuration, property, column, javaTypeClass)
         .jdbcType(jdbcType)
         .nestedQueryId(applyCurrentNamespace(nestedSelect, true))
@@ -407,10 +436,35 @@ public class MapperBuilderAssistant extends BaseBuilder {
     return columns;
   }
 
+  /**
+   * 看下面这个示例，我要查询Blog，结果集使用blogResult这个映射
+   * 这个映射中还需要查询Author，而Author的获取需要ID和Phone（用来演示所以这么设计）
+   * 那么如何传递多个参数给select语句呢？就是通过{arg1=col1,arg2=col2}
+   * 这里的arg1、arg2是传到嵌套select语句的参数名，col1是此时查出来的结果的列名
+   *
+   * <resultMap id="blogResult" type="Blog">
+   *   <association property="author" column="{id=author_id,phone=author_phone}" javaType="Author" select="selectAuthor"/>
+   * </resultMap>
+   *
+   * <select id="selectBlog" resultMap="blogResult">
+   *   SELECT * FROM BLOG WHERE ID = #{id}
+   * </select>
+   *
+   * <select id="selectAuthor" resultType="Author">
+   *   SELECT * FROM AUTHOR WHERE ID = #{id} AND PHONE = #{phone}
+   * </select>
+   *
+   * @param columnName
+   * @return
+   */
   private List<ResultMapping> parseCompositeColumnName(String columnName) {
     List<ResultMapping> composites = new ArrayList<ResultMapping>();
+    // 先判断column是否存在 "=" 和 ","，如果存在判定是多参数的
     if (columnName != null && (columnName.indexOf('=') > -1 || columnName.indexOf(',') > -1)) {
+      // delim那里是指分隔符，这里指定了三个，"{"   "}"   "="
+      // 比如{arg1=col1,arg2=col2}，会被分为 arg1、col1、arg2、col2
       StringTokenizer parser = new StringTokenizer(columnName, "{}=, ", false);
+      // 遍历
       while (parser.hasMoreTokens()) {
         String property = parser.nextToken();
         String column = parser.nextToken();
